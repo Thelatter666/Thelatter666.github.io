@@ -1,0 +1,88 @@
+/**
+ * Design tokens
+ *
+ * 来源：ui-ux-pro-max --design-system（Dark Mode OLED，density 3 / Spacious），
+ * 再按 spec §10.1 的硬性约束过滤与改写：
+ *   - 拒绝预设的绿色 accent #22C55E 与午夜蓝底 #0F172A —— 与徽章的暖色金属质感冲突
+ *   - 改用徽章材质色派生：暖色近黑底 + 陶土铜 accent
+ *   - 拒绝 Google Fonts —— 使用系统字体栈，不加载中文 web font
+ *
+ * 对比度已逐档核算（相对各自最深的使用背景），正文层级均满足 WCAG AA 4.5:1：
+ *   text        #f0e6e0 / bg #0d0908      = 15.3:1
+ *   text-muted  #a8968c / surface-1       =  6.6:1
+ *   text-dim    #96837a / surface-2       =  4.9:1
+ *   accent      #d97757 / bg              =  6.4:1
+ *   on-accent   #16100e / accent          =  6.0:1
+ * 分隔线 border 约为 1.5:1，属装饰性分隔，不承载信息，故不套用 4.5:1。
+ */
+
+:root {
+  /* ---------- 色阶：冷中带暖的深色底 ---------- */
+  --color-bg: #0d0908;
+  --color-surface-1: #16100e;
+  --color-surface-2: #1f1715;
+
+  --color-border: #33261f;
+  --color-border-strong: #4a382f;
+
+  --color-text: #f0e6e0;
+  --color-text-muted: #a8968c;
+  --color-text-dim: #96837a;
+
+  /* accent 取自徽章材质色（spec §10.1 硬性约束） */
+  --color-accent: #d97757;          /* 陶土铜，Claude 徽章材质色 */
+  --color-accent-dim: #8f4f3a;
+  --color-on-accent: #16100e;       /* accent 底上的文字色 */
+
+  --color-metal: #c9ccd4;           /* 钛银，OpenAI 徽章材质色 */
+  --color-gunmetal: #4a5468;        /* 枪色，智谱徽章材质色 */
+
+  --color-ring: #f0e6e0;            /* 焦点环，需高可见 */
+  --color-danger: #ef4444;
+
+  /* ---------- 间距：4px 基准，8dp 节奏（density 3 / Spacious） ---------- */
+  --space-1: 0.25rem;   /*  4 */
+  --space-2: 0.5rem;    /*  8 */
+  --space-3: 0.75rem;   /* 12 */
+  --space-4: 1rem;      /* 16 */
+  --space-6: 1.5rem;    /* 24 */
+  --space-8: 2rem;      /* 32 */
+  --space-12: 3rem;     /* 48 */
+  --space-16: 4rem;     /* 64 */
+  --space-24: 6rem;     /* 96 */
+
+  /* ---------- 字号阶梯 ---------- */
+  --text-xs: 0.75rem;    /* 12 */
+  --text-sm: 0.875rem;   /* 14 */
+  --text-base: 1rem;     /* 16 */
+  --text-lg: 1.125rem;   /* 18 */
+  --text-xl: 1.5rem;     /* 24 */
+  --text-2xl: 2rem;      /* 32 */
+  --text-3xl: 2.75rem;   /* 44 */
+  --text-4xl: 3.5rem;    /* 56 */
+
+  /* ---------- 圆角 ---------- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+
+  /* ---------- 阴影层级 ---------- */
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-2: 0 4px 12px rgb(0 0 0 / 0.45);
+  --shadow-3: 0 12px 32px rgb(0 0 0 / 0.55);
+
+  /* ---------- 字体：系统栈，零 web font 请求 ---------- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* ---------- 布局 ---------- */
+  --content-width: 68rem;
+  --nav-height: 4rem;
+
+  /* ---------- 动效：统一时长/曲线，供组件引用 ---------- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+}
