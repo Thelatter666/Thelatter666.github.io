@@ -1,0 +1,54 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog', ({ data }) => !data.draft);
+  return posts.map((post) => ({ params: { slug: post.slug }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content, headings } = await post.render();
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+<BaseLayout title={`${post.data.title} · 唐宗昊`} description={post.data.description}>
+  <div class="wrap">
+    {toc.length > 2 && (
+      <aside class="toc">
+        <b>目录</b>
+        <ul>
+          {toc.map((h) => <li class={`d${h.depth}`}><a href={`#${h.slug}`}>{h.text}</a></li>)}
+        </ul>
+      </aside>
+    )}
+
+    <article>
+      <h1>{post.data.title}</h1>
+      <p class="desc">{post.data.description}</p>
+      <div class="body"><Content /></div>
+    </article>
+  </div>
+</BaseLayout>
+
+<style>
+  .wrap { max-width: 48rem; margin: 0 auto; padding: var(--space-8) var(--space-6); }
+  h1 { font-size: var(--text-2xl); }
+  .desc { color: var(--color-text-muted); font-size: var(--text-sm); }
+
+  .toc { margin-bottom: var(--space-8); padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+  .toc b { font-size: var(--text-xs); color: var(--color-text-dim); }
+  .toc ul { list-style: none; margin: var(--space-2) 0 0; padding: 0; }
+  .toc a { font-size: var(--text-sm); color: var(--color-text-muted); }
+  .toc .d3 { padding-left: var(--space-4); }
+
+  .body { color: var(--color-text-muted); line-height: 1.75; }
+  .body :global(h2) { color: var(--color-text); font-size: var(--text-lg); margin-top: var(--space-8); }
+  .body :global(pre) { padding: var(--space-4); border-radius: var(--radius-md); overflow-x: auto; }
+  .body :global(code) { font-family: var(--font-mono); font-size: 0.9em; }
+
+  @media (min-width: 1024px) {
+    .wrap { max-width: 64rem; display: grid; grid-template-columns: 1fr 12rem; gap: var(--space-12); }
+    .toc { position: sticky; top: var(--space-8); align-self: start; margin: 0; }
+  }
+</style>
