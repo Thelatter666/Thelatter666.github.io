@@ -1,0 +1,93 @@
+---
+import { BADGES } from '../../data/badges';
+import { BADGE_SHAPES } from '../../data/badgeShapes';
+import { contourToPath } from './badge';
+
+/**
+ * 降级渲染用的静态 SVG（构建期生成，spec §7.8）。
+ * 与 3D 同源 —— 都来自 BADGE_SHAPES，不维护第二套素材。
+ */
+const fallback = BADGES.map((cfg) => {
+  const d = BADGE_SHAPES[cfg.id];
+  const paths = d.layers
+    ? d.layers.map((p, i) => ({ d: p, fill: cfg.materials[i]?.color ?? cfg.materials[0].color }))
+    : [{ d: d.path ?? contourToPath(d.contour ?? []), fill: cfg.materials[0].color }];
+  return {
+    brand: cfg.brand,
+    note: cfg.note,
+    viewBox: `${d.viewBox.x} ${d.viewBox.y} ${d.viewBox.w} ${d.viewBox.h}`,
+    paths,
+  };
+});
+---
+
+<div class="hero3d" data-hero3d>
+  <!--
+    降级层：reduced-motion / 无 WebGL / 窄屏 / 禁用 JS 时显示。
+    默认可见，脚本成功挂载 3D 后才隐藏 —— 这样既能在 three 加载期间先有内容，
+    也能保证 JS 被禁用时 hero 不空白。
+  -->
+  <ul class="fallback" data-hero-fallback>
+    {
+      fallback.map((b) => (
+        <li>
+          <svg viewBox={b.viewBox} aria-hidden="true" fill-rule="evenodd">
+            {b.paths.map((p) => (
+              <path d={p.d} style={`fill:#${p.fill.toString(16).padStart(6, '0')}`} />
+            ))}
+          </svg>
+          <span class="brand">{b.brand}</span>
+          <span class="note">{b.note}</span>
+        </li>
+      ))
+    }
+  </ul>
+  <div class="canvas-host" data-hero-canvas></div>
+</div>
+
+<script>
+  const root = document.querySelector('[data-hero3d]');
+  const fallbackEl = document.querySelector('[data-hero-fallback]');
+  const canvasHost = document.querySelector('[data-hero-canvas]');
+
+  if (root) {
+    // 岛内动态 import：three 独立分包，其他页面完全不加载（spec §7.9）
+    const { mountHero, shouldFallback } = await import('./mount');
+    if (shouldFallback()) {
+      canvasHost?.remove();
+    } else {
+      fallbackEl?.setAttribute('hidden', '');
+      mountHero(root);
+    }
+  }
+</script>
+
+<style>
+  .hero3d { position: relative; width: 100%; height: 100%; }
+  .canvas-host { position: absolute; inset: 0; }
+  .canvas-host canvas { display: block; width: 100%; height: 100%; }
+
+  .fallback {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: var(--space-4);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(0.75rem, 3.5vw, 2.5rem);
+    flex-wrap: wrap;
+  }
+  .fallback li {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    text-align: center;
+    max-width: 8rem;
+  }
+  .fallback svg { width: clamp(40px, 7vw, 76px); height: auto; }
+  .brand { font-size: var(--text-xs); color: var(--color-text-muted); }
+  .note { font-size: var(--text-xs); color: var(--color-text-dim); line-height: 1.35; }
+</style>

@@ -1,12 +1,17 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero3D from '../components/hero3d/Hero3D.astro';
 import { site } from '../data/site';
 ---
 
 <BaseLayout title={`${site.name} · ${site.role}`}>
   <section class="hero">
-    <!-- 徽章带：上 55%。Phase 2（Task 12）把 <Hero3D /> 插入此处 -->
-    <div class="hero-visual" data-hero-visual></div>
+    <!--
+      徽章带：上 55%。
+      注意：Hero3D 是 Astro 组件，不能加 client:* 指令（那只作用于框架组件）。
+      three 的分包靠组件内动态 import 实现 —— 效果等同，且不引入任何框架依赖。
+    -->
+    <div class="hero-visual"><Hero3D /></div>
 
     <!-- 文字带：下 45%。文本安全区 —— 徽章在几何上不可进入（spec §7.2） -->
     <div class="hero-text">

@@ -362,7 +362,8 @@ const blog = defineCollection({
 
 ### 7.9 性能
 
-- island 用 `client:visible` + 岛内动态 `import('three')`，three 独立分包，**其他页面完全不加载**。
+- Hero3D 是 **Astro 组件，不能加 `client:*` 指令**（那只作用于框架组件，本项目不引入任何框架）。three 的分包靠**组件内动态 `import('./mount')`** 实现：入口脚本约 0.8 KB gzip，three 全部落在约 154 KB gzip 的懒加载 chunk 中，**其他页面完全不加载**。效果与 island 等同。
+- 降级层默认可见，脚本成功挂载 3D 后才隐藏 —— 兼顾 three 加载期间的占位与"禁用 JS 时 hero 不空白"。
 - `IntersectionObserver`：hero 滚出视口即暂停渲染循环。
 - `devicePixelRatio` 上限 2。
 - 不启用阴影贴图（§7.1）。

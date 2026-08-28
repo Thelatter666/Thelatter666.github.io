@@ -82,6 +82,14 @@ export function createBadge(cfg: BadgeConfig): BadgeMesh {
 }
 
 /**
+ * 点数组（Y 向上数学坐标）→ SVG path（Y 向下）。
+ * 用于降级渲染：与 3D 同源，不维护第二套素材（spec §7.8）。
+ */
+export function contourToPath(contour: readonly (readonly [number, number])[]): string {
+  return `M ${contour.map(([x, y]) => `${x.toFixed(2)} ${(-y).toFixed(2)}`).join(' L ')} Z`;
+}
+
+/**
  * 由徽章包围盒生成 3~5 个球碰撞代理（spec §7.5）。
  *
  * 徽章是薄片挤出体而非圆形（智谱近方、OpenCode 正方、DeepSeek 竖长），
