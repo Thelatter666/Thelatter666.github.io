@@ -23,38 +23,46 @@ const { title } = Astro.props;
         --paper: #ffffff;
       }
 
-      @page { size: A4; margin: 10mm; }
+      @page { size: A4; margin: 9mm; }
 
       * { box-sizing: border-box; }
 
       html, body { margin: 0; background: var(--paper); }
 
+      /*
+       * 字体族名必须是 "Noto Sans CJK SC"（注意 CJK），不是 "Noto Sans SC"：
+       *   - Debian/Ubuntu 的 fonts-noto-cjk 注册为 "Noto Sans CJK SC"
+       *   - Homebrew 的 font-noto-sans-cjk-sc 同样注册为 "Noto Sans CJK SC"
+       * 写错名字会静默回退到无中文覆盖的字体，PDF 里全是豆腐块。
+       * headless Chrome 在 macOS 上拿不到系统 PingFang SC，因此 Noto 是必需的兜底。
+       */
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC",
-                     "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
-        font-size: 12px;
-        line-height: 1.4;
+        font-family: "Noto Sans CJK SC", -apple-system, BlinkMacSystemFont,
+                     "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+                     "Noto Sans SC", sans-serif;
+        font-size: 11.5px;
+        line-height: 1.35;
         color: var(--body);
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
 
-      h1 { font-size: 26px; color: var(--ink); margin: 0; }
+      h1 { font-size: 24px; color: var(--ink); margin: 0; }
       h2 {
-        font-size: 12.5px;
+        font-size: 12px;
         color: var(--ink);
         letter-spacing: 0.08em;
         border-bottom: 1px solid var(--line);
-        padding-bottom: 3px;
-        margin: 13px 0 7px;
+        padding-bottom: 2px;
+        margin: 10px 0 5px;
       }
-      h3 { font-size: 12px; color: var(--ink); margin: 0; }
-      p, li { font-size: 11.5px; line-height: 1.4; }
+      h3 { font-size: 11.5px; color: var(--ink); margin: 0; }
+      p, li { font-size: 11px; line-height: 1.35; }
       a { color: var(--ink); text-decoration: none; }
 
       /* 条目与分节尽量不被分页切断 */
       .section { break-inside: avoid; }
-      .entry { break-inside: avoid; margin-bottom: 7px; }
+      .entry { break-inside: avoid; margin-bottom: 5px; }
 
       /* 屏幕预览时的纸张效果；打印时由 @page 接管 */
       @media screen {
