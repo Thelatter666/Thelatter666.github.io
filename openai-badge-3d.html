@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OpenAI 金属徽章 3D</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: radial-gradient(ellipse at 50% 30%, #2a2d36 0%, #16181d 55%, #0b0c0f 100%);
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+  }
+  #app { position: fixed; inset: 0; }
+  .hint {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+    color: rgba(255,255,255,.38); font-size: 13px; letter-spacing: .12em;
+    user-select: none; pointer-events: none;
+  }
+  .title {
+    position: fixed; top: 36px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,.85); font-size: 15px; letter-spacing: .5em;
+    font-weight: 300; user-select: none; pointer-events: none;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="title">Open&nbsp;AI</div>
+<div class="hint">拖拽旋转 · 滚轮缩放</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const SVG_PATH = "M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z";
+
+// ---------- 场景基础 ----------
+const container = document.getElementById('app');
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x0b0c0f, 40, 90);
+
+const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 200);
+camera.position.set(0, 3.2, 42);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+// 环境贴图：金属反射的关键
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+
+// ---------- 灯光 ----------
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+keyLight.position.set(12, 20, 14);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.left = -20; keyLight.shadow.camera.right = 20;
+keyLight.shadow.camera.top = 20;  keyLight.shadow.camera.bottom = -20;
+keyLight.shadow.radius = 8;
+scene.add(keyLight);
+
+const rimLight = new THREE.DirectionalLight(0x7ea8ff, 1.4);
+rimLight.position.set(-16, 6, -12);
+scene.add(rimLight);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+
+// ---------- 轮廓 → Shape ----------
+const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="${SVG_PATH}"/></svg>`;
+const data = new SVGLoader().parse(svgMarkup);
+
+// SVG 的 Y 轴朝下：提取轮廓点后做 Y 翻转并调整绕向，
+// 保证外轮廓 CCW、内洞 CW（ExtrudeGeometry 的要求）
+function flippedShape(shape) {
+  const rebuild = (pts, reverse) => {
+    const p = pts.map(pt => new THREE.Vector2(pt.x, -pt.y));
+    if (reverse) p.reverse();
+    return p;
+  };
+  const s = new THREE.Shape(rebuild(shape.getPoints(32), true));
+  for (const hole of shape.holes) {
+    s.holes.push(new THREE.Path(rebuild(hole.getPoints(32), false)));
+  }
+  return s;
+}
+
+const solidShapes = data.paths.flatMap(p => SVGLoader.createShapes(p)).map(flippedShape);
+
+// ---------- 挤出：徽章主体 ----------
+const THICKNESS = 1.6;      // 徽章厚度
+const BEVEL = 0.22;         // 倒角尺寸
+
+const geo = new THREE.ExtrudeGeometry(solidShapes, {
+  depth: THICKNESS,
+  steps: 1,
+  curveSegments: 32,
+  bevelEnabled: true,
+  bevelThickness: BEVEL,
+  bevelSize: BEVEL * 0.7,
+  bevelOffset: 0,
+  bevelSegments: 6,
+});
+
+// 几何居中（SVG 轮廓落在 0~24 范围内，需平移到原点）
+geo.center();
+geo.computeVertexNormals();
+
+// 缩放到合适尺寸并居中（logo 原始 24x24）
+const SCALE = 0.9;
+const mesh = new THREE.Mesh(
+  geo,
+  new THREE.MeshPhysicalMaterial({
+    color: 0xc9ccd4,          // 钛银
+    metalness: 1.0,
+    roughness: 0.24,
+    clearcoat: 0.6,
+    clearcoatRoughness: 0.25,
+    envMapIntensity: 1.2,
+  })
+);
+mesh.scale.setScalar(SCALE);
+mesh.castShadow = true;
+mesh.receiveShadow = true;
+
+const badge = new THREE.Group();
+badge.add(mesh);
+badge.rotation.x = -0.12;
+scene.add(badge);
+
+// ---------- 地面（接影） ----------
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(120, 120),
+  new THREE.ShadowMaterial({ opacity: 0.35 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -11;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ---------- 交互 ----------
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 16;
+controls.maxDistance = 60;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 1.4;
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ---------- 渲染循环 ----------
+const clock = new THREE.Clock();
+(function tick() {
+  requestAnimationFrame(tick);
+  const t = clock.getElapsedTime();
+  badge.position.y = Math.sin(t * 0.8) * 0.35;  // 轻微悬浮呼吸
+  controls.update();
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>

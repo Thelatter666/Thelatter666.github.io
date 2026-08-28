@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DeepSeek 金属徽章 3D</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: radial-gradient(ellipse at 50% 30%, #232a3a 0%, #14171f 55%, #08090d 100%);
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+  }
+  #app { position: fixed; inset: 0; }
+  .hint {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+    color: rgba(255,255,255,.38); font-size: 13px; letter-spacing: .12em;
+    user-select: none; pointer-events: none;
+  }
+  .title {
+    position: fixed; top: 36px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,.85); font-size: 15px; letter-spacing: .5em;
+    font-weight: 300; user-select: none; pointer-events: none;
+    text-transform: uppercase;
+  }
+  .title em {
+    font-style: normal;
+    color: #6b85ff;
+    text-shadow: 0 0 18px rgba(107,133,255,.35);
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="title">Deep<em>&nbsp;Seek</em></div>
+<div class="hint">拖拽旋转 · 滚轮缩放</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls }    from 'three/addons/controls/OrbitControls.js';
+import { SVGLoader }        from 'three/addons/loaders/SVGLoader.js';
+import { RoomEnvironment }  from 'three/addons/environments/RoomEnvironment.js';
+
+// ----------------------------------------------------------------------------
+// DeepSeek 鲸鱼 logo —— 来自 simple-icons (CC0, public domain)
+// viewBox 隐式取 path 自身坐标；路径含 4 个 subpath：
+//   1) 鲸鱼外轮廓（主 shape）
+//   2) 腹部亮区（hole）
+//   3) 眼睛小圆（hole）
+//   4) 嘴部分隔线（hole）
+// ----------------------------------------------------------------------------
+const SVG_PATH = "M23.748 4.651c-.254-.124-.364.113-.512.233-.051.04-.094.09-.137.137-.372.397-.806.657-1.373.626-.829-.046-1.537.214-2.163.848-.133-.782-.575-1.248-1.247-1.548-.352-.155-.708-.311-.955-.65-.172-.24-.219-.509-.305-.774-.055-.16-.11-.323-.293-.35-.2-.031-.278.136-.356.276-.313.572-.434 1.202-.422 1.84.027 1.436.633 2.58 1.838 3.393.137.094.172.187.129.323-.082.28-.18.553-.266.833-.055.179-.137.218-.328.14a5.5 5.5 0 0 1-1.737-1.179c-.857-.828-1.631-1.743-2.597-2.46a12 12 0 0 0-.689-.47c-.985-.957.13-1.743.387-1.836.27-.098.094-.433-.778-.428-.872.003-1.67.295-2.687.685a3 3 0 0 1-.465.136 9.6 9.6 0 0 0-2.883-.101c-1.885.21-3.39 1.1-4.497 2.622C.082 8.776-.231 10.854.152 13.02c.403 2.284 1.568 4.175 3.36 5.653 1.857 1.533 3.997 2.284 6.438 2.14 1.482-.085 3.132-.284 4.994-1.86.47.234.962.328 1.78.398.629.058 1.235-.031 1.705-.129.735-.155.684-.836.418-.961-2.155-1.004-1.682-.595-2.112-.926 1.095-1.295 2.768-3.598 3.284-6.733.05-.346.115-.834.108-1.114-.004-.171.035-.238.23-.257a4.2 4.2 0 0 0 1.545-.475c1.397-.763 1.96-2.016 2.093-3.517.02-.23-.004-.467-.247-.588M11.58 18.168c-2.088-1.642-3.101-2.183-3.52-2.16-.39.024-.32.472-.234.763.09.288.207.487.371.74.114.167.192.416-.113.603-.673.416-1.842-.14-1.897-.168-1.361-.801-2.5-1.86-3.301-3.306-.775-1.393-1.225-2.888-1.299-4.482-.02-.385.094-.522.477-.592a4.7 4.7 0 0 1 1.53-.038c2.131.311 3.946 1.264 5.467 2.774.868.86 1.525 1.887 2.202 2.89.72 1.066 1.494 2.082 2.48 2.915.348.291.626.513.892.677-.802.09-2.14.109-3.055-.615zm1.001-6.44a.306.306 0 0 1 .415-.287.3.3 0 0 1 .113.074.3.3 0 0 1 .086.214c0 .17-.136.307-.308.307a.303.303 0 0 1-.306-.307m3.11 1.596c-.2.081-.4.151-.591.16a1.25 1.25 0 0 1-.798-.254c-.274-.23-.47-.358-.551-.758a1.7 1.7 0 0 1 .015-.588c.07-.327-.007-.537-.238-.727-.188-.156-.426-.199-.689-.199a.6.6 0 0 1-.254-.078.253.253 0 0 1-.114-.358 1 1 0 0 1 .192-.21c.356-.202.767-.136 1.146.016.352.144.618.408 1.001.782.392.451.462.576.685.915.176.264.336.536.446.848.066.194-.02.353-.25.45";
+
+// ---------- 场景基础 ----------
+const container = document.getElementById('app');
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x08090d, 40, 95);
+
+const camera = new THREE.PerspectiveCamera(36, innerWidth / innerHeight, 0.1, 200);
+camera.position.set(0, 2, 48);                                  // 竖向 logo 比例 ≈ 24:41，相机略拉远
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+// ---------- 环境贴图：金属反射的灵魂 ----------
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+
+// ---------- 灯光 ----------
+// 主光：暖白（与蓝色 rim 形成冷暖对比）
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+keyLight.position.set(10, 22, 16);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.left = -22; keyLight.shadow.camera.right = 22;
+keyLight.shadow.camera.top  =  22; keyLight.shadow.camera.bottom = -22;
+keyLight.shadow.bias = -0.0008;
+keyLight.shadow.radius = 8;
+scene.add(keyLight);
+
+// 侧面冷光（DeepSeek 品牌蓝）
+const rimLight = new THREE.DirectionalLight(0x6b85ff, 1.8);
+rimLight.position.set(-18, 4, -10);
+scene.add(rimLight);
+
+// 头顶高位天光
+const topLight = new THREE.DirectionalLight(0xbcd6ff, 0.8);
+topLight.position.set(0, 16, 6);
+scene.add(topLight);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.22));
+
+// ---------- SVG → Shape ----------
+const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg"><path d="${SVG_PATH}"/></svg>`;
+const data = new SVGLoader().parse(svgMarkup);
+
+// 与 openai-badge-3d 保持一致的 Y 翻转：让鲸鱼正面朝向 +Z（朝向相机）
+function flippedShape(shape) {
+  const rebuild = (pts, reverse) => {
+    const p = pts.map(pt => new THREE.Vector2(pt.x, -pt.y));
+    if (reverse) p.reverse();
+    return p;
+  };
+  const s = new THREE.Shape(rebuild(shape.getPoints(48), true));
+  for (const hole of shape.holes) {
+    s.holes.push(new THREE.Path(rebuild(hole.getPoints(48), false)));
+  }
+  return s;
+}
+
+const solidShapes = data.paths
+  .flatMap(p => SVGLoader.createShapes(p))
+  .map(flippedShape);
+
+// ---------- 挤出：徽章主体 ----------
+// 鲸鱼轮廓比 OpenAI 复杂（多个内部 hole），倒角稍大，曲线更密
+const THICKNESS = 1.4;
+const BEVEL     = 0.28;
+
+const geo = new THREE.ExtrudeGeometry(solidShapes, {
+  depth: THICKNESS,
+  steps: 1,
+  curveSegments: 48,
+  bevelEnabled: true,
+  bevelThickness: BEVEL,
+  bevelSize: BEVEL * 0.65,
+  bevelOffset: 0,
+  bevelSegments: 8,
+});
+
+// 几何居中（path 坐标在 0~36 之间，需要平移到原点）
+geo.center();
+geo.computeVertexNormals();
+
+// ---------- 金属材质：冷钛蓝，iridescence 给边缘一抹虹彩 ----------
+const metalMaterial = new THREE.MeshPhysicalMaterial({
+  color: 0x2a3550,             // 深蓝灰，金属基底
+  metalness: 1.0,
+  roughness: 0.18,             // 抛光钛
+  clearcoat: 0.65,
+  clearcoatRoughness: 0.18,
+  envMapIntensity: 1.45,
+  iridescence: 0.35,           // 边缘虹彩（高光圈）
+  iridescenceIOR: 1.8,
+  iridescenceThicknessRange: [100, 800],
+});
+
+const SCALE = 0.95;
+const mesh = new THREE.Mesh(geo, metalMaterial);
+mesh.scale.setScalar(SCALE);
+mesh.castShadow = true;
+mesh.receiveShadow = true;
+
+const badge = new THREE.Group();
+badge.add(mesh);
+badge.rotation.x = -0.18;     // 微微后仰，露出一点倒角高光
+badge.rotation.z =  0.06;     // 极轻微的侧转，让 rim light 沿对角线扫过
+scene.add(badge);
+
+// 注：simple-icons 的鲸鱼 path 内部自带 hole（腹部亮区、眼睛、嘴部分隔线），
+// ExtrudeGeometry 后会自然成为穿透的镂空——这正好是金属徽章/印章的工艺语言，
+// 不再额外叠加白色浮雕，避免与镂空孔洞产生错位和 Z-fighting。
+
+// ---------- 地面（接影） ----------
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(140, 140),
+  new THREE.ShadowMaterial({ opacity: 0.38 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -13;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ---------- 交互 ----------
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.enablePan = false;
+controls.minDistance = 18;
+controls.maxDistance = 80;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 1.6;
+controls.minPolarAngle = Math.PI * 0.15;
+controls.maxPolarAngle = Math.PI * 0.85;
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ---------- 渲染循环 ----------
+const clock = new THREE.Clock();
+(function tick() {
+  requestAnimationFrame(tick);
+  const t = clock.getElapsedTime();
+  badge.position.y = Math.sin(t * 0.8) * 0.4;   // 轻微悬浮呼吸
+  controls.update();
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>

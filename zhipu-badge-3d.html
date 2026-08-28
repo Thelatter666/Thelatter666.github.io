@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>智谱 金属徽章 3D</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: radial-gradient(ellipse at 50% 30%, #1b2030 0%, #0d1017 55%, #05060a 100%);
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+  }
+  #app { position: fixed; inset: 0; }
+  .hint {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+    color: rgba(255,255,255,.38); font-size: 13px; letter-spacing: .12em;
+    user-select: none; pointer-events: none;
+  }
+  .title {
+    position: fixed; top: 36px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,.85); font-size: 15px; letter-spacing: .45em;
+    font-weight: 300; user-select: none; pointer-events: none;
+    text-transform: uppercase;
+  }
+  .title em { font-style: normal; color: #5a8aff; text-shadow: 0 0 18px rgba(90,138,255,.4); }
+  .sub {
+    position: fixed; top: 64px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,.3); font-size: 10px; letter-spacing: .6em;
+    user-select: none; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="title">智<em>谱</em>&nbsp;AI</div>
+<div class="sub">Z&nbsp;H&nbsp;I&nbsp;P&nbsp;U</div>
+<div class="hint">拖拽旋转 · 滚轮缩放</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls }    from 'three/addons/controls/OrbitControls.js';
+import { SVGLoader }        from 'three/addons/loaders/SVGLoader.js';
+import { RoomEnvironment }  from 'three/addons/environments/RoomEnvironment.js';
+
+// ----------------------------------------------------------------------------
+// 智谱 logo —— 由 zhipulogo.png 逐像素追踪（contour tracing）自动生成
+//
+// 追踪管线：Pillow 8x LANCZOS 上采样 → Otsu 二值化 → 形态学开闭去噪
+//           → cv2.findContours(RETR_TREE) → approxPolyDP 简化(ε=0.2%)
+// 保真度：IoU = 0.9859（与原图二值 mask 对比）
+//
+// 几何结构（原图 77 × 80，图像坐标系 Y 向下）：
+//   · 外轮廓 1 个：77 × 80 直角矩形（深色实体 = 挤出的金属牌）
+//   · 内洞   3 个：三条朝右上倾斜的镂空斜带，共同读作一个 "Z"
+//       洞 A（上短带） y≈12.8–21.0  x≈7.6–39.1   厚 ≈8.2
+//       洞 B（中长带） y≈13.0–67.1  x≈6.6–69.2   厚 ≈20.4（对角贯穿）
+//       洞 C（下短带） y≈58.9–67.1  x≈36.8–68.1  厚 ≈8.1
+// 注意：三条斜带彼此不相接，是三个独立镂空（非一个连通的 Z 形孔）。
+// ----------------------------------------------------------------------------
+const ZHIPU_PATH =
+  "M 0 0 L 0 79.88 L 76.88 79.88 L 76.88 0 Z " +
+  "M 36.75 66.25 L 41 60.25 L 42.88 59 L 67.38 58.88 L 68.12 59.5 L 68.12 66.5 L 67.25 67.12 L 37.5 67.12 L 36.75 66.62 Z " +
+  "M 69.25 13.12 L 69 14.25 L 31.62 66.88 L 7.5 67.12 L 6.62 66.62 L 44.25 13 Z " +
+  "M 7.62 20 L 7.62 13.62 L 8 13 L 8.62 12.75 L 38.38 12.75 L 39.12 13.25 L 39 14 L 38.25 14.75 L 37.75 15.75 L 35 19.5 L 33.12 20.88 L 8.38 21 L 7.75 20.5 Z";
+
+// ---------- 场景基础 ----------
+const container = document.getElementById('app');
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x05060a, 30, 80);
+
+const camera = new THREE.PerspectiveCamera(36, innerWidth / innerHeight, 0.1, 200);
+camera.position.set(0, 0.5, 34);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+// ---------- 环境贴图 ----------
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+
+// ---------- 灯光 ----------
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.6);
+keyLight.position.set(10, 20, 16);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.left = -12; keyLight.shadow.camera.right = 12;
+keyLight.shadow.camera.top  =  12; keyLight.shadow.camera.bottom = -12;
+keyLight.shadow.bias = -0.0006;
+keyLight.shadow.radius = 6;
+scene.add(keyLight);
+
+// 侧面冷光：智谱品牌蓝，扫过斜带的内壁
+const rimLight = new THREE.DirectionalLight(0x5a8aff, 1.9);
+rimLight.position.set(-16, 4, -10);
+scene.add(rimLight);
+
+// 背光：从徽章后方打来，让三道镂空透出光，投出 Z 形光斑
+const backLight = new THREE.SpotLight(0x7ea8ff, 60, 40, 0.7, 0.5, 1.6);
+backLight.position.set(0, 2, -14);
+backLight.target.position.set(0, 0, 0);
+scene.add(backLight, backLight.target);
+
+// 正面补光：metalness≈1 时正面只有纯反射、容易发死黑，
+// 在相机侧补一盏柔光把正面拉起来，同时保留倒角的锐利高光
+const frontFill = new THREE.DirectionalLight(0xdce8ff, 1.3);
+frontFill.position.set(3, 5, 22);
+scene.add(frontFill);
+
+const topLight = new THREE.DirectionalLight(0xc7daff, 0.6);
+topLight.position.set(0, 16, 6);
+scene.add(topLight);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+
+// ---------- SVG → Shape（显式指定外轮廓 / 洞，不依赖自动判断）----------
+const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 77 80"><path d="${ZHIPU_PATH}"/></svg>`;
+const data = new SVGLoader().parse(svgMarkup);
+
+// 收集所有 subpath，Y 轴翻转到数学坐标系（SVG 的 Y 向下）
+const subs = [];
+data.paths.forEach(p => {
+  p.subPaths.forEach(sp => {
+    subs.push(sp.getPoints(4).map(pt => new THREE.Vector2(pt.x, -pt.y)));
+  });
+});
+
+// 面积绝对值最大的 subpath = 外轮廓，其余 = 镂空
+subs.sort((a, b) => Math.abs(THREE.ShapeUtils.area(b)) - Math.abs(THREE.ShapeUtils.area(a)));
+const shape = new THREE.Shape(subs[0]);
+for (let i = 1; i < subs.length; i++) shape.holes.push(new THREE.Path(subs[i]));
+
+// ---------- 挤出：镂空金属牌 ----------
+// 坐标仍是原图尺度（77 × 80），厚度按同尺度给，最后整体 scale
+const THICKNESS = 10;
+const BEVEL     = 0.8;
+
+const geo = new THREE.ExtrudeGeometry(shape, {
+  depth: THICKNESS,
+  steps: 1,
+  curveSegments: 4,          // 全是直线段，无需曲线细分
+  bevelEnabled: true,
+  bevelThickness: BEVEL,
+  bevelSize: BEVEL * 0.62,
+  bevelOffset: 0,
+  bevelSegments: 6,
+});
+
+geo.center();
+geo.computeVertexNormals();
+
+const SCALE = 0.155;         // 80 → 约 12.4 单位高
+const mesh = new THREE.Mesh(
+  geo,
+  new THREE.MeshPhysicalMaterial({
+    color: 0x4a5468,              // 枪色钛金属（gunmetal），略提亮避免正面死黑
+    metalness: 0.95,              // 留 5% 漫反射，让补光能作用于正面
+    roughness: 0.26,              // 稍高的粗糙度 = 更宽更柔的反射带
+    clearcoat: 0.6,
+    clearcoatRoughness: 0.2,
+    envMapIntensity: 1.9,
+    iridescence: 0.28,
+    iridescenceIOR: 1.8,
+    iridescenceThicknessRange: [120, 800],
+  })
+);
+mesh.scale.setScalar(SCALE);
+mesh.castShadow = true;
+mesh.receiveShadow = true;
+
+const badge = new THREE.Group();
+badge.add(mesh);
+badge.rotation.x = -0.12;
+scene.add(badge);
+
+// ---------- 地面（接投 Z 形光斑）----------
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(120, 120),
+  new THREE.ShadowMaterial({ opacity: 0.42 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -9;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ---------- 交互 ----------
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.enablePan = false;
+controls.minDistance = 12;
+controls.maxDistance = 60;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 1.5;
+
+// 调试钩子（便于外部脚本检查几何/材质，对浏览无影响）
+window.__debug = { THREE, scene, camera, mesh, badge, controls };
+
+// ?front=1 固定为正面视角（方便截图/出图，不影响正常浏览）
+if (new URLSearchParams(location.search).has('front')) {
+  controls.autoRotate = false;
+  badge.rotation.set(0, 0, 0);
+  camera.position.set(0, 0, 30);
+  camera.lookAt(0, 0, 0);
+}
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ---------- 渲染循环 ----------
+const clock = new THREE.Clock();
+(function tick() {
+  requestAnimationFrame(tick);
+  const t = clock.getElapsedTime();
+  badge.position.y = Math.sin(t * 0.8) * 0.3;
+  controls.update();
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>

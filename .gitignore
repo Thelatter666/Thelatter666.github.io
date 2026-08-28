@@ -23,3 +23,11 @@ pnpm-debug.log*
 .idea/
 .vscode/
 *.swp
+
+# Playwright MCP 临时产物
+.playwright-mcp/
+
+# 徽章 3D 中间产物：描点 SVG、渲染截图
+*-traced.svg
+*-badge-final.png
+zhipulogo.png

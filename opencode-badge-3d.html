@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OpenCode 3D 徽章</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: radial-gradient(ellipse at 50% 30%, #23252c 0%, #101216 55%, #05060a 100%);
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+  }
+  #app { position: fixed; inset: 0; }
+  .hint {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+    color: rgba(255,255,255,.38); font-size: 13px; letter-spacing: .12em;
+    user-select: none; pointer-events: none;
+  }
+  .title {
+    position: fixed; top: 36px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,.85); font-size: 15px; letter-spacing: .45em;
+    font-weight: 300; user-select: none; pointer-events: none;
+  }
+  .sub {
+    position: fixed; top: 64px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,.3); font-size: 10px; letter-spacing: .6em;
+    user-select: none; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="title">OpenCode</div>
+<div class="sub">A&nbsp;I&nbsp;&nbsp;C&nbsp;O&nbsp;D&nbsp;I&nbsp;N&nbsp;G&nbsp;&nbsp;A&nbsp;G&nbsp;E&nbsp;N&nbsp;T</div>
+<div class="hint">拖拽旋转 · 滚轮缩放</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls }    from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment }  from 'three/addons/environments/RoomEnvironment.js';
+
+// ----------------------------------------------------------------------------
+// OpenCode 3D 徽章 —— 忠实于官方 opencode.ai/favicon.svg
+//
+// 完整正方形卡片，不做任何镂空。三层结构，各自用官方原色：
+//
+//   ① 卡片本体   512 × 512 正方形        #131010（深底）
+//   ② 白色门框   A(128,96→384,416) 挖去 B(192,160→320,352)   #FFFFFF
+//   ③ 灰色方块   C(192,224→320,352)      #5A5858
+//
+// ② ③ 是贴在卡片正面的薄层（凸出约 3/512），因此正面看就是原 logo，
+// 侧面看才有厚度与层次——即"原汁原味 + 3D 化"。
+//
+// 官方 SVG 原色：
+//   <rect width="512" height="512" fill="#131010"/>
+//   <path d="M320 224V352H192V224H320Z" fill="#5A5858"/>
+//   <path fill-rule="evenodd" d="M384 416H128V96H384V416ZM320 160H192V352H320V160Z" fill="white"/>
+// ----------------------------------------------------------------------------
+
+// ---------- 场景基础 ----------
+const container = document.getElementById('app');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0c10);
+scene.fog = new THREE.Fog(0x0b0c10, 34, 90);
+
+const camera = new THREE.PerspectiveCamera(36, innerWidth / innerHeight, 0.1, 200);
+camera.position.set(0, 0.5, 30);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+
+// ---------- 灯光（柔和均匀，让三色都还原到位）----------
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.0);
+keyLight.position.set(8, 16, 18);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.left = -12; keyLight.shadow.camera.right = 12;
+keyLight.shadow.camera.top  =  12; keyLight.shadow.camera.bottom = -12;
+keyLight.shadow.bias = -0.0006;
+keyLight.shadow.radius = 6;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0xdce8ff, 0.9);
+fillLight.position.set(-6, 4, 16);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0x8fb0ff, 1.2);
+rimLight.position.set(-14, 6, -12);
+scene.add(rimLight);
+
+// 环境光压低，否则会均匀抬高深底，#131010 就不再是黑的
+scene.add(new THREE.AmbientLight(0xffffff, 0.18));
+
+// ---------- 几何构造 ----------
+// SVG 的 Y 轴朝下，统一翻转到数学坐标系
+const flip = pts => pts.map(([x, y]) => new THREE.Vector2(x, -y));
+
+const rect = (x0, y0, x1, y1) => flip([[x0,y0],[x1,y0],[x1,y1],[x0,y1]]);
+
+// ① 卡片本体：完整 512 × 512 正方形，无洞
+const cardShape = new THREE.Shape(rect(0, 0, 512, 512));
+
+// ② 白色门框：外矩形 A 挖去内矩形 B
+const frameShape = new THREE.Shape(rect(128, 96, 384, 416));
+frameShape.holes.push(new THREE.Path(rect(192, 160, 320, 352)));
+
+// ③ 灰色方块 C
+const blockShape = new THREE.Shape(rect(192, 224, 320, 352));
+
+// 厚度（512 尺度；最终缩放后约 1.6 单位）
+const CARD_T = 56, CARD_BEVEL = 6;
+const LAYER_T = 6, LAYER_BEVEL = 1.5;
+const PROTRUDE = 3;                       // 图形层凸出卡片表面的高度
+
+const cardGeo = new THREE.ExtrudeGeometry(cardShape, {
+  depth: CARD_T, steps: 1, curveSegments: 4,
+  bevelEnabled: true, bevelThickness: CARD_BEVEL,
+  bevelSize: CARD_BEVEL * 0.66, bevelOffset: 0, bevelSegments: 6,
+});
+
+const layerOpts = {
+  depth: LAYER_T, steps: 1, curveSegments: 4,
+  bevelEnabled: true, bevelThickness: LAYER_BEVEL,
+  bevelSize: LAYER_BEVEL * 0.6, bevelOffset: 0, bevelSegments: 4,
+};
+const frameGeo = new THREE.ExtrudeGeometry(frameShape, layerOpts);
+const blockGeo = new THREE.ExtrudeGeometry(blockShape, layerOpts);
+
+[cardGeo, frameGeo, blockGeo].forEach(g => { g.center(); g.computeVertexNormals(); });
+
+// 图形层贴在卡片正面：卡片半厚 + 凸出量 - 自身半厚
+const CARD_HALF  = (CARD_T  + 2 * CARD_BEVEL)  / 2;
+const LAYER_HALF = (LAYER_T + 2 * LAYER_BEVEL) / 2;
+const layerZ = CARD_HALF + PROTRUDE - LAYER_HALF;
+
+// ---------- 材质：官方原色 ----------
+// 三色都按官方原色设定。金属度刻意压低：metalness 越高，颜色越被环境反射洗掉，
+// #131010 这种深色会被提亮好几倍。低金属度 + 低 envMapIntensity 才能还原原色，
+// 金属感交给 clearcoat（清漆层）来表现。
+// 基色比官方 #131010 再压深一档：在 PBR 下灯光漫反射 + 清漆反射会整体抬高亮度，
+// 直接用官方值会被提亮约 5 倍，压深后才能落回原色的观感
+const darkMat = new THREE.MeshPhysicalMaterial({
+  color: 0x030303,                  // 官方 #131010 的光照补偿值
+  metalness: 0.12,
+  roughness: 0.58,
+  clearcoat: 0.05,
+  clearcoatRoughness: 0.5,
+  envMapIntensity: 0.2,
+});
+
+const whiteMat = new THREE.MeshPhysicalMaterial({
+  color: 0xf5f6f7,                  // 官方白色（略降一档避免强光下过曝）
+  metalness: 0.06,                  // 烤漆质感而非白金属
+  roughness: 0.32,
+  clearcoat: 0.9,
+  clearcoatRoughness: 0.1,
+  envMapIntensity: 1.0,
+});
+
+const grayMat = new THREE.MeshPhysicalMaterial({
+  color: 0x494746,                  // 官方 #5A5858 的光照补偿值
+  metalness: 0.35,
+  roughness: 0.46,
+  clearcoat: 0.25,
+  clearcoatRoughness: 0.32,
+  envMapIntensity: 0.55,
+});
+
+const SCALE = 0.0234;               // 512 → 约 12 单位
+
+const card  = new THREE.Mesh(cardGeo,  darkMat);
+const frame = new THREE.Mesh(frameGeo, whiteMat);
+const block = new THREE.Mesh(blockGeo, grayMat);
+
+[card, frame, block].forEach(m => {
+  m.castShadow = true;
+  m.receiveShadow = true;
+});
+// layerZ 是 512 尺度下的偏移，必須先定位再统一缩放，
+// 否则偏移量不会被缩放、图形层会飞离卡片表面
+frame.position.z = layerZ;
+block.position.z = layerZ;
+
+const inner = new THREE.Group();
+inner.add(card, frame, block);
+inner.scale.setScalar(SCALE);
+
+const badge = new THREE.Group();
+badge.add(inner);
+badge.rotation.x = -0.12;
+scene.add(badge);
+
+// ---------- 地面 ----------
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(120, 120),
+  new THREE.ShadowMaterial({ opacity: 0.4 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -9;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ---------- 交互 ----------
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.enablePan = false;
+controls.minDistance = 12;
+controls.maxDistance = 60;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 1.5;
+
+window.__debug = { THREE, scene, camera, badge, controls, card, frame, block };
+
+// ?front=1 固定正面视角（方便截图/出图）
+if (new URLSearchParams(location.search).has('front')) {
+  controls.autoRotate = false;
+  badge.rotation.set(0, 0, 0);
+  camera.position.set(0, 0, 26);
+  camera.lookAt(0, 0, 0);
+}
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ---------- 渲染循环 ----------
+const clock = new THREE.Clock();
+(function tick() {
+  requestAnimationFrame(tick);
+  const t = clock.getElapsedTime();
+  badge.position.y = Math.sin(t * 0.8) * 0.3;
+  controls.update();
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>
