@@ -1,0 +1,200 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { resume } from '../../data/resume';
+import { site } from '../../data/site';
+---
+
+<BaseLayout title={`简历 · ${site.name}`} description={`${site.name} — ${site.role}，在线简历`}>
+  <article class="resume">
+    <header class="masthead">
+      <div>
+        <h1>{resume.profile.name}</h1>
+        <p class="role">{resume.profile.role}</p>
+      </div>
+      <ul class="contact">
+        {
+          resume.profile.contacts.map((c) => (
+            <li>
+              <span>{c.label}</span>
+              {c.href ? <a href={c.href}>{c.value}</a> : c.value}
+            </li>
+          ))
+        }
+      </ul>
+    </header>
+
+    <div class="actions">
+      <a class="btn primary" href="/resume.pdf" download>下载 PDF 简历</a>
+      <a class="btn" href="/projects">查看项目证据</a>
+    </div>
+
+    <section>
+      <h2>教育背景</h2>
+      {
+        resume.education.map((e) => (
+          <div class="entry">
+            <div class="entry-head">
+              <h3>{e.school} <span>{e.detail}</span></h3>
+              <span class="date">{e.period}</span>
+            </div>
+            <p class="copy">{e.note}</p>
+          </div>
+        ))
+      }
+    </section>
+
+    <section>
+      <h2>专业技能</h2>
+      <div class="skill-grid">
+        {
+          resume.skills.map((s) => (
+            <div class="skill">
+              <h3>{s.title}</h3>
+              <p>{s.body}</p>
+              {s.title === 'AI Agent 工程化' && (
+                <a class="evidence" href="/projects#agent-workflow">查看工作流证据 →</a>
+              )}
+            </div>
+          ))
+        }
+      </div>
+    </section>
+
+    <section>
+      <h2>核心项目经历</h2>
+      {
+        resume.projects.map((p) => (
+          <div class="entry">
+            <div class="entry-head">
+              <h3>{p.name} <span>· {p.subtitle}</span></h3>
+              <span class="date">{p.period}</span>
+            </div>
+            <ul class="highlights">
+              {p.highlights.map((h) => <li>{h}</li>)}
+            </ul>
+            <p class="stack">{p.stack.join(' · ')}</p>
+          </div>
+        ))
+      }
+    </section>
+
+    <section>
+      <h2>竞赛与荣誉</h2>
+      <ul class="awards">
+        {resume.awards.map((a) => <li>{a}</li>)}
+      </ul>
+    </section>
+
+    <footer class="resume-footer">
+      <span>{resume.footer.traits.join('　·　')}</span>
+      <span>更新日期：{resume.footer.updatedAt}</span>
+    </footer>
+  </article>
+</BaseLayout>
+
+<style>
+  .resume {
+    max-width: 56rem;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-6);
+  }
+
+  .masthead {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-6);
+    padding-bottom: var(--space-4);
+    border-bottom: 2px solid var(--color-border-strong);
+  }
+  .masthead h1 { margin: 0; font-size: var(--text-3xl); }
+  .role { margin: var(--space-2) 0 0; color: var(--color-accent); font-weight: 700; }
+
+  .contact {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    text-align: right;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+  .contact span { display: inline-block; width: 3.5rem; color: var(--color-text-dim); }
+
+  .actions { display: flex; gap: var(--space-3); margin: var(--space-6) 0; flex-wrap: wrap; }
+  .btn {
+    display: inline-block;
+    padding: var(--space-3) var(--space-6);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-full);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    transition: border-color var(--duration-base) var(--ease-out);
+  }
+  .btn:hover { border-color: var(--color-accent); text-decoration: none; }
+  .btn.primary {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-on-accent);
+    font-weight: 600;
+  }
+  .btn.primary:hover { background: var(--color-accent-dim); border-color: var(--color-accent-dim); }
+
+  section { margin-top: var(--space-8); }
+  h2 {
+    font-size: var(--text-lg);
+    letter-spacing: 0.08em;
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .entry { margin-bottom: var(--space-6); }
+  .entry-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-4);
+  }
+  .entry-head h3 { margin: 0; font-size: var(--text-base); }
+  .entry-head span { color: var(--color-text-muted); font-weight: 400; font-size: var(--text-sm); }
+  .date { flex: 0 0 auto; color: var(--color-accent); font-size: var(--text-sm); font-weight: 700; white-space: nowrap; }
+
+  .copy { margin: var(--space-2) 0 0; color: var(--color-text-muted); }
+
+  .highlights { margin: var(--space-2) 0 0; padding-left: 1.15rem; color: var(--color-text-muted); }
+  .highlights li { margin-bottom: var(--space-2); font-size: var(--text-sm); }
+
+  .stack { margin-top: var(--space-2); font-size: var(--text-xs); color: var(--color-text-dim); }
+
+  .skill-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-4) var(--space-8); }
+  .skill h3 { margin: 0 0 var(--space-1); font-size: var(--text-sm); color: var(--color-text); }
+  .skill p { margin: 0; font-size: var(--text-sm); color: var(--color-text-muted); }
+  .evidence { display: inline-block; margin-top: var(--space-1); font-size: var(--text-xs); }
+
+  .awards {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-6);
+  }
+  .awards li { color: var(--color-text-muted); font-size: var(--text-sm); }
+
+  .resume-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-top: var(--space-8);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-dim);
+    font-size: var(--text-xs);
+  }
+
+  @media (max-width: 720px) {
+    .masthead { flex-direction: column; }
+    .contact { text-align: left; }
+    .skill-grid { grid-template-columns: 1fr; }
+    .entry-head { flex-direction: column; gap: var(--space-1); }
+    .resume-footer { flex-direction: column; gap: var(--space-1); }
+  }
+</style>
