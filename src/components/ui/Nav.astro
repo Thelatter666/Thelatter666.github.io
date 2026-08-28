@@ -1,0 +1,54 @@
+---
+import { site } from '../../data/site';
+import { publishedPostCount } from '../../data/blogCount';
+
+const items = [
+  { label: '首页', href: '/' },
+  { label: '简历', href: '/resume' },
+  { label: '项目', href: '/projects' },
+];
+
+// 文章数 <3 时不显示博客入口（spec §6）
+const nav = (await publishedPostCount()) >= 3
+  ? [...items, { label: '博客', href: '/blog' }]
+  : items;
+
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+---
+
+<header class="nav">
+  <a class="brand" href="/">{site.name}</a>
+  <nav aria-label="主导航">
+    {nav.map((item) => (
+      <a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>
+        {item.label}
+      </a>
+    ))}
+  </nav>
+</header>
+
+<style>
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-6);
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: var(--space-4) var(--space-6);
+  }
+  .brand {
+    font-weight: 700;
+    color: var(--color-text);
+    letter-spacing: 0.02em;
+  }
+  .brand:hover { text-decoration: none; color: var(--color-accent); }
+  nav { display: flex; gap: var(--space-6); }
+  nav a {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+  nav a:hover { color: var(--color-text); text-decoration: none; }
+  nav a[aria-current='page'] { color: var(--color-accent); }
+</style>
