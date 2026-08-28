@@ -1,0 +1,186 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { PROJECTS } from '../../data/projects';
+
+const cards = PROJECTS.filter((p) => p.depth === 'card');
+const deep = PROJECTS.find((p) => p.depth === 'deep')!;
+---
+
+<BaseLayout title={`项目 · 唐宗昊`} description="三个项目：向量检索系统、LLM 应用、以及 agent 工程化实践">
+  <div class="wrap">
+    <h1 class="page-title">项目</h1>
+
+    <!--
+      两个 AI 应用在前：目标岗位是 AI 应用开发，第一眼应看到最相关的证据（spec §8.2）。
+      "只讲技术决策、不讲过程" —— 它们没有过程可讲，硬编会露馅。
+    -->
+    {cards.map((p) => (
+      <article class="card">
+        <header>
+          <h2>{p.name}</h2>
+          <span class="period">{p.period}</span>
+        </header>
+        <p class="subtitle">{p.subtitle}</p>
+        <ul class="hl">
+          {p.highlights.map((h) => <li>{h}</li>)}
+        </ul>
+        <div class="meta">
+          <ul class="metrics">
+            {p.metrics.map((m) => <li><b>{m.value}</b><span>{m.label}</span></li>)}
+          </ul>
+          <p class="stack">{p.stack.join(' · ')}</p>
+          <a class="repo" href={p.github} rel="noopener noreferrer" target="_blank">GitHub →</a>
+        </div>
+      </article>
+    ))}
+
+    <!--
+      kaoyandaily 深度案例在后：承载 agent 工程化方法论。
+      开头一句"成熟之后的产物"承接前两个项目，形成成长弧线（spec §8.2）。
+    -->
+    <article class="card deep" id="agent-workflow">
+      <header>
+        <h2>{deep.name}</h2>
+        <span class="period">{deep.period}</span>
+      </header>
+      <p class="subtitle">{deep.subtitle}</p>
+
+      <p class="arc">
+        上面两个项目回答的是「我会不会做 AI 应用」，这一个回答的是「我能不能把
+        Agent 变成可靠的工程能力」——它是我 agent 工程化方法<strong>成熟之后</strong>的产物。
+      </p>
+
+      <h3>Agent 工作流</h3>
+      <ul class="hl">
+        <li>编写 <code>AGENT.md</code> 作为面向 AI 代理的驾驶手册：只记录读代码读不出来的决策、陷阱、红线与工作流，并要求任何改动同步本文件。</li>
+        <li><code>plans/</code> 排期机制（19 条：DONE 12 / TODO 6）与 <code>docs/adr/</code> 决策记录（0001–0006），让每次改动都可追溯。</li>
+        <li>自定义 Skill 封装高频操作（<code>.claude/skills/manage-server/</code> 处理部署、日志、重启），另有 <code>server-butler/</code> 管理云实例。</li>
+        <li><code>memory.md</code> 沉淀事故教训，并已反哺为 <code>AGENT.md</code> 中的安全红线——形成「事故 → 沉淀 → 约束下一次 Agent」的闭环。</li>
+        <li>强制 10 步工作流：提需求 → 探索理解 → 复述对齐（用户确认后才动手）→ 新建分支 → 执行 → 效果确认 → commit/merge 指令 → 合并 → 同步远端 → 同步服务器。</li>
+      </ul>
+
+      <details class="agent-md">
+        <summary>展开 AGENT.md 节选</summary>
+        <pre><code>{`> 面向 AI 代理的驾驶手册：只记录「读代码读不出来的」决策、陷阱、红线与工作流。
+> 枚举型参考（目录树/组件/端点/部署）见 ARCHITECTURE.md；领域术语见 CONTEXT.md。
+> 维护规则：任何改动本文列举的事实必须同步本文件；提交前缀 docs(agent):
+
+## Request Lifecycle（每个路由的固定模式）
+1. requireAuth middleware → session check → injects req.userId
+2. validate(Schema) middleware → Zod parse on req.body
+3. Route handler → raw SQL via pool.query()，所有查询按 req.userId 过滤
+4. transformXxx(row) → snake_case DB 列转 camelCase 响应
+5. Errors → throw new AppError(status, code, message) → 由 errorHandler 统一捕获
+
+## Data Isolation
+- user_id NEVER accepted from client — always from req.session.userId
+- 所有查询用 WHERE user_id = ? 模式；他人的资源返回 404（不枚举）`}</code></pre>
+      </details>
+
+      <h3>架构</h3>
+      <ul class="hl">
+        <li>双后端数据模式：服务器（MySQL 8）与本地（IndexedDB）并存、互不干扰，通过统一的 JSON 备份格式互通。</li>
+        <li>Zod schema 位于 <code>shared/</code>，前后端共享同一份校验；9 张表（users + 8 张业务表）。</li>
+      </ul>
+
+      <h3>质量</h3>
+      <ul class="hl">
+        <li>Vitest 单元测试 + Playwright E2E 验证核心用户路径，并配置性能预算。</li>
+        <li>针对边界场景设计用例（倒计时临界点、热力图空值）。</li>
+      </ul>
+
+      <h3>部署</h3>
+      <ul class="hl">
+        <li>独立部署至 Linux 云服务器，配置 Nginx 反向代理；双远端（GitHub + Gitee）同步。</li>
+      </ul>
+
+      <div class="meta">
+        <ul class="metrics">
+          {deep.metrics.map((m) => <li><b>{m.value}</b><span>{m.label}</span></li>)}
+        </ul>
+        <p class="stack">{deep.stack.join(' · ')}</p>
+        <a class="repo" href={deep.github} rel="noopener noreferrer" target="_blank">GitHub →</a>
+      </div>
+    </article>
+
+    <!--
+      视觉作品：与 hero 形成闭环 —— 访客在首屏看到徽章，滚到底部发现"这玩意儿是他自己做的"。
+      5 个徽章打包为 1 个作品条目，不拆成 5 条（同质内容会淹没列表）。
+    -->
+    <article class="card">
+      <h2>AI 品牌金属徽章 3D</h2>
+      <p class="subtitle">你在首屏看到的那 5 个金属徽章，是用 Three.js 从品牌 logo 轮廓挤出建模的</p>
+      <ul class="hl">
+        <li>从品牌 logo 提取多边形轮廓，经 <code>ExtrudeGeometry</code> 挤出并倒角，配 <code>MeshPhysicalMaterial</code> 金属材质与 <code>RoomEnvironment</code> 环境反射。</li>
+        <li>5 个徽章打包为一个作品条目，与首屏 hero 共用同一份轮廓数据；不支持 WebGL 的环境自动降级为同源 SVG。</li>
+      </ul>
+    </article>
+  </div>
+</BaseLayout>
+
+<style>
+  .wrap { max-width: 56rem; margin: 0 auto; padding: var(--space-8) var(--space-6) var(--space-16); }
+  .page-title { font-size: var(--text-2xl); margin-bottom: var(--space-8); }
+
+  .card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    margin-bottom: var(--space-6);
+    background: var(--color-surface-1);
+  }
+  .card header { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4); }
+  .card h2 { font-size: var(--text-xl); margin: 0; }
+  .period { color: var(--color-accent); font-size: var(--text-sm); font-weight: 700; white-space: nowrap; }
+  .subtitle { margin: var(--space-2) 0 var(--space-4); color: var(--color-text-muted); font-size: var(--text-sm); }
+
+  .card h3 {
+    font-size: var(--text-base);
+    color: var(--color-text);
+    margin: var(--space-6) 0 var(--space-2);
+    letter-spacing: 0.02em;
+  }
+
+  .hl { margin: 0; padding-left: 1.15rem; color: var(--color-text-muted); font-size: var(--text-sm); }
+  .hl li { margin-bottom: var(--space-2); }
+  .hl code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: var(--color-surface-2);
+    padding: 0.1em 0.35em;
+    border-radius: var(--radius-sm);
+  }
+
+  /* 成长弧线的视觉强调：左侧色条 + 暖底 */
+  .arc {
+    padding: var(--space-3) var(--space-4);
+    border-left: 2px solid var(--color-accent);
+    background: var(--color-surface-2);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    margin: var(--space-2) 0 var(--space-6);
+  }
+  .arc strong { color: var(--color-text); }
+
+  .agent-md summary { cursor: pointer; font-size: var(--text-sm); color: var(--color-accent); }
+  .agent-md pre {
+    margin-top: var(--space-3);
+    padding: var(--space-4);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: var(--text-xs);
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+  .agent-md pre code { background: none; padding: 0; }
+
+  .meta { margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--color-border); }
+  .metrics { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-6); margin: 0 0 var(--space-3); padding: 0; }
+  .metrics li { display: flex; flex-direction: column; }
+  .metrics b { color: var(--color-text); font-size: var(--text-base); }
+  .metrics span { color: var(--color-text-dim); font-size: var(--text-xs); }
+  .stack { margin: 0 0 var(--space-2); font-size: var(--text-xs); color: var(--color-text-dim); }
+  .repo { font-size: var(--text-sm); }
+</style>
