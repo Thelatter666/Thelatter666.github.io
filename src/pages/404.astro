@@ -1,0 +1,22 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="页面不存在 · 唐宗昊" description="页面不存在">
+  <section class="wrap">
+    <h1>404</h1>
+    <p>这个页面不存在。</p>
+    <a href="/">回到首页</a>
+  </section>
+</BaseLayout>
+
+<style>
+  .wrap {
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: var(--space-24) var(--space-6);
+    text-align: center;
+  }
+  h1 { font-size: var(--text-4xl); }
+  p { color: var(--color-text-muted); margin-bottom: var(--space-6); }
+</style>
