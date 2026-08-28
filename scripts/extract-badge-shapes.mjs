@@ -128,7 +128,12 @@ export interface BadgeShapeData {
   viewBox: { x: number; y: number; w: number; h: number };
 }
 
-export const BADGE_SHAPES = {
+/**
+ * 显式标注为 Record<string, BadgeShapeData>。
+ * 不能用 as-const + satisfies —— 那样按 id 索引会得到各条目的字面量联合类型，
+ * contour / path / layers 只存在于部分成员上，访问会报 ts(2339)。
+ */
+export const BADGE_SHAPES: Record<string, BadgeShapeData> = {
   claude: {
     contour: [
 ${fmtPts(claudeContour, '      ')},
@@ -162,7 +167,7 @@ ${fmtPts(claudeContour, '      ')},
     ],
     viewBox: ${JSON.stringify(VIEWBOX.opencode)},
   },
-} as const satisfies Record<string, BadgeShapeData>;
+};
 `;
 
   await writeFile(OUT, body, 'utf8');
