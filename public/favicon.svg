@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#0d0908"/>
+  <!-- 吊坠：一根线 + 一枚陶土铜圆牌，呼应 hero 的悬挂徽章 -->
+  <path d="M16 5v6" stroke="#d97757" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="16" cy="19.5" r="6" fill="#d97757"/>
+  <circle cx="13.8" cy="17.3" r="1.8" fill="#f0e6e0" opacity="0.45"/>
+</svg>
